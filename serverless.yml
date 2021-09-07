@@ -1,0 +1,189 @@
+service: eztoll
+frameworkVersion: "2"
+
+provider:
+  name: aws
+  runtime: go1.x
+  lambdaHashingVersion: 20201221
+
+  stage: dev
+  region: us-east-1
+
+  memorySize: 128
+  timeout: 3
+
+  #  iamRoleStatements:
+  #    - Effect: "Allow"
+  #      Action:
+  #        - "s3:ListBucket"
+  #      Resource: { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ServerlessDeploymentBucket" } ] ]  }
+  #    - Effect: "Allow"
+  #      Action:
+  #        - "s3:PutObject"
+  #      Resource:
+  #        Fn::Join:
+  #          - ""
+  #          - - "arn:aws:s3:::"
+  #            - "Ref" : "ServerlessDeploymentBucket"
+  #            - "/*"
+
+  environment:
+    variable1: value1
+
+package:
+  patterns:
+    - "!./**"
+    - ./bin/**
+
+functions:
+  ProcessRawImages:
+    handler: bin/process_raw_images
+    reservedConcurrency: 1
+    events:
+      - sqs:
+          batchSize: 10
+          maximumRetryAttempts: 1
+          arn: !GetAtt RawImageQueue.Arn
+
+  ProcessEvents:
+    handler: bin/process_events
+    reservedConcurrency: 1
+
+  ProcessPayments:
+    handler: bin/process_payments
+    reservedConcurrency: 1
+    events:
+      - sqs:
+          batchSize: 10
+          maximumRetryAttempts: 1
+          arn: !GetAtt PaymentQueue.Arn
+
+  PostPayment:
+    handler: bin/post_payment
+    reservedConcurrency: 1
+    events:
+      - http:
+          path: payment
+          method: post
+
+  GetTolls:
+    handler: bin/get_tolls
+    reservedConcurrency: 1
+    events:
+      - http:
+          path: tolls/{id}
+          method: get
+
+resources:
+  Resources:
+    RawImageBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:service}-${self:provider.stage}-rawimages
+        AccessControl: Private
+        NotificationConfiguration:
+          QueueConfigurations:
+            - Event: s3:ObjectCreated:Put
+              Queue: !GetAtt RawImageQueue.Arn
+        LifecycleConfiguration:
+          Rules:
+            - Status: Enabled
+              Transitions:
+                - TransitionInDays: 30
+                  StorageClass: STANDARD_IA
+
+    ArchivedImagesBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        AccessControl: Private
+
+    TableEventBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        AccessControl: Private
+
+    TollTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+        KinesisStreamSpecification:
+          StreamArn: !GetAtt TableEventStream.Arn
+
+    TableEventStream:
+      Type: AWS::Kinesis::Stream
+      Properties:
+        ShardCount: 1
+
+    RawImageQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        RedrivePolicy:
+          deadLetterTargetArn: !GetAtt RawImageDLQ.Arn
+          maxReceiveCount: 1
+
+    RawImageQueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        Queues:
+          - !Ref RawImageQueue
+        PolicyDocument:
+          Statement:
+            - Effect: Allow
+              Action:
+                - SQS:SendMessage
+              Resource: !GetAtt RawImageQueue.Arn
+              Principal:
+                Service: s3.amazonaws.com
+              Condition:
+                ArnLike:
+                  aws:SourceArn: arn:aws:s3:*:*:${self:service}-${self:provider.stage}-rawimages
+
+    RawImageDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        MessageRetentionPeriod: 1209600
+
+    PaymentQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        RedrivePolicy:
+          deadLetterTargetArn: !GetAtt PaymentDLQ.Arn
+          maxReceiveCount: 1
+
+    PaymentDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        MessageRetentionPeriod: 1209600
+
+    ApiGatewaySqsRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - apigateway.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Policies:
+          - PolicyName: root
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - sqs:SendMessage
+                  Resource:
+                    - !GetAtt PaymentQueue.Arn
