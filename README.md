@@ -29,3 +29,21 @@ The following license plate image is uploaded as `12345/2021-09-06T13:00:00Z.jpg
 This gets processed through Amazon Rekognition and inserted into DynamoDB as the following item.
 
 ![ddb](ddb_item.png)
+
+
+Then, the REST API can be queried like `endpoint/tolls/ABC123`, where `ABC123` is the license plate number, and receive a list of tolls for that license plate.
+
+```json
+{
+    "tolls": [
+        {
+            "id": "2021-09-06T13:00:00Z#123ABC",
+            "timestamp": "2021-09-06T13:00:00Z",
+            "plateNumber": "123ABC",
+            "tollId": "12345",
+            "paymentId": "",
+            "cost": 2
+        }
+    ]
+}
+```
