@@ -102,19 +102,6 @@ resources:
                 - TransitionInDays: 30
                   StorageClass: STANDARD_IA
 
-    # RawImageBucketPolicy:
-    #   Type: AWS::S3::BucketPolicy
-    #   Properties:
-    #     Bucket: !Ref RawImageBucket
-    #     PolicyDocument:
-    #       Statement:
-    #         - Effect: Allow
-    #           Action:
-    #             - s3:GetObject
-    #           Resource: !GetAtt RawImagesBucket.Arn
-    #           Principal:
-    #             Service: rekognition.amazonaws.com
-
     ArchivedImagesBucket:
       Type: AWS::S3::Bucket
       Properties:
