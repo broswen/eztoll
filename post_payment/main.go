@@ -37,10 +37,6 @@ func Handler(ctx context.Context) (Response, error) {
 		StatusCode:      200,
 		IsBase64Encoded: false,
 		Body:            buf.String(),
-		Headers: map[string]string{
-			"Content-Type":           "application/json",
-			"X-MyCompany-Func-Reply": "hello-handler",
-		},
 	}
 
 	return resp, nil

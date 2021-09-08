@@ -12,23 +12,33 @@ provider:
   memorySize: 128
   timeout: 3
 
-  #  iamRoleStatements:
-  #    - Effect: "Allow"
-  #      Action:
-  #        - "s3:ListBucket"
-  #      Resource: { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ServerlessDeploymentBucket" } ] ]  }
-  #    - Effect: "Allow"
-  #      Action:
-  #        - "s3:PutObject"
-  #      Resource:
-  #        Fn::Join:
-  #          - ""
-  #          - - "arn:aws:s3:::"
-  #            - "Ref" : "ServerlessDeploymentBucket"
-  #            - "/*"
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:PutItem"
+        - "dynamodb:GetItem"
+        - "dynamodb:UpdateItem"
+        - "dynamodb:Query"
+      Resource:
+        - !GetAtt TollTable.Arn
+    - Effect: "Allow"
+      Action:
+        - "rekognition:DetectText"
+      Resource:
+        - "*"
+    - Effect: "Allow"
+      Action:
+        - "sqs:SendMessage"
+      Resource:
+        - !GetAtt PaymentQueue.Arn
+    - Effect: "Allow"
+      Action:
+        - "s3:GetObject"
+      Resource:
+        - !Join ["/", [!GetAtt RawImageBucket.Arn, "*"]]
 
   environment:
-    variable1: value1
+    TOLLTABLE: !Ref TollTable
 
 package:
   patterns:
@@ -91,6 +101,19 @@ resources:
               Transitions:
                 - TransitionInDays: 30
                   StorageClass: STANDARD_IA
+
+    # RawImageBucketPolicy:
+    #   Type: AWS::S3::BucketPolicy
+    #   Properties:
+    #     Bucket: !Ref RawImageBucket
+    #     PolicyDocument:
+    #       Statement:
+    #         - Effect: Allow
+    #           Action:
+    #             - s3:GetObject
+    #           Resource: !GetAtt RawImagesBucket.Arn
+    #           Principal:
+    #             Service: rekognition.amazonaws.com
 
     ArchivedImagesBucket:
       Type: AWS::S3::Bucket
