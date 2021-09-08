@@ -20,3 +20,12 @@ EZToll takes pictures of license plates as input, converts them to toll events, 
 1. A toll can be resolved by sending a payment id for each toll event id. Payments are stored in an SQS queue for durability until processed.
 
 ![eztoll.png](eztoll.png)
+
+## Example
+The following license plate image is uploaded as `12345/2021-09-06T13:00:00Z.jpg`. This specifies `12345` as the id of the toll both and `2021-09-06T13:00:00Z.jpg` as the timestamp of the image.
+
+![plate](plate.jpg)
+
+This gets processed through Amazon Rekognition and inserted into DynamoDB as the following item.
+
+![ddb](ddb_item.png)
