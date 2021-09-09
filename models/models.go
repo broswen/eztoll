@@ -25,7 +25,7 @@ type Toll struct {
 type Payment struct {
 	PaymentId   string `json:"paymentId"`
 	PlateNumber string `json:"plateNumber"`
-	TollId      string `json:"tollId"`
+	Id          string `json:"id"`
 }
 
 type PaymentRequest struct {
