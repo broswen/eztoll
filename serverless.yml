@@ -39,6 +39,7 @@ provider:
 
   environment:
     TOLLTABLE: !Ref TollTable
+    PAYMENTQUEUE: !Ref PaymentQueue
 
 package:
   patterns:

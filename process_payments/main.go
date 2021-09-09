@@ -37,13 +37,14 @@ func Handler(ctx context.Context, event events.SQSEvent) error {
 					"PK": &types.AttributeValueMemberS{Value: payment.PlateNumber},
 					"SK": &types.AttributeValueMemberS{Value: payment.Id},
 				},
-				UpdateExpression: "SET #p = :p",
+				UpdateExpression: aws.String("SET #p = :p"),
 				ExpressionAttributeNames: map[string]string{
 					"#p": "payment_id",
 				},
 				ExpressionAttributeValues: map[string]types.AttributeValue{
-					":p": &types.AttributeValueMemberS{Value: payment.PaymentId}
+					":p": &types.AttributeValueMemberS{Value: payment.PaymentId},
 				},
+				ConditionExpression: aws.String("attribute_exists(PK) AND attribute_exists(SK) AND attribute_not_exists(payment_id)"),
 			}
 			_, err := ddbClient.UpdateItem(ctx, &updateItemInput)
 			if err != nil {

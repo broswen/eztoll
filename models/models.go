@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"strings"
 	"time"
 )
@@ -28,8 +29,30 @@ type Payment struct {
 	Id          string `json:"id"`
 }
 
+func (p Payment) Validate() error {
+	if p.PaymentId == "" {
+		return errors.New("payment id is invalid")
+	}
+	if p.PlateNumber == "" {
+		return errors.New("plate number id is invalid")
+	}
+	if p.Id == "" {
+		return errors.New("id is invalid")
+	}
+	return nil
+}
+
 type PaymentRequest struct {
 	Payments []Payment `json:"payments"`
+}
+
+func (pp PaymentRequest) Validate() error {
+	for _, p := range pp.Payments {
+		if err := p.Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func NormalizeLicensePlate(value string) string {
