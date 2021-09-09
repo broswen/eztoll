@@ -37,7 +37,7 @@ Then, the REST API can be queried like `endpoint/tolls/ABC123`, where `ABC123` i
 {
     "tolls": [
         {
-            "id": "2021-09-06T13:00:00Z#123ABC",
+            "id": "1xssNTb05y5mR5VO87SH24vONEP",
             "timestamp": "2021-09-06T13:00:00Z",
             "plateNumber": "123ABC",
             "tollId": "12345",

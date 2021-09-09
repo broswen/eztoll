@@ -213,23 +213,20 @@ resources:
               Statement:
                 - Effect: Allow
                   Action:
-                    - kinesis:PutRecord
-                    - kinesis:PutRecords
                     - kinesis:DescribeStream
-                    - kinesis:DescribeStreamSummary
                     - kinesis:GetRecords
                     - kinesis:GetShardIterator
                     - kinesis:ListShards
-                    - kinesis:ListStreams
-                    - kinesis:SubscribeToShard
                   Resource:
                     - !GetAtt TableEventStream.Arn
                 - Effect: Allow
                   Action:
+                    - s3:AbortMultipartUpload
+                    - s3:GetBucketLocation
                     - s3:GetObject
+                    - s3:ListBucket
+                    - s3:ListBucketMultipartUploads
                     - s3:PutObject
-                    - s3:DeleteObject
-                    - s3:CopyObject
                   Resource:
                     - !Join ["/", [!GetAtt TableEventBucket.Arn, "*"]]
                 - Effect: Allow
