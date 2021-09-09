@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.5.0
 	github.com/aws/aws-sdk-go-v2/service/rekognition v1.8.0
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.9.0
+	github.com/segmentio/ksuid v1.0.4
 )
 
 require (

@@ -25,7 +25,7 @@ EZToll takes pictures of license plates as input, converts them to toll events, 
 The following license plate image is uploaded as `12345/2021-09-06T13:00:00Z.jpg`. This specifies `12345` as the id of the toll both and `2021-09-06T13:00:00Z.jpg` as the timestamp of the image.
 
 ![plate](plate.jpg)
-
+ 
 This gets processed through Amazon Rekognition and inserted into DynamoDB as the following item.
 
 ![ddb](ddb_item.png)

@@ -20,6 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/rekognition/types"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/broswen/eztoll/models"
+	"github.com/segmentio/ksuid"
 )
 
 var ddbClient *dynamodb.Client
@@ -92,12 +93,17 @@ func Handler(ctx context.Context, event events.SQSEvent) error {
 			// mock static cost, should query toll prices api
 			cost := 2.0
 
+			id, err := ksuid.NewRandom()
+			if err != nil {
+				log.Fatal(err)
+			}
+
 			putItemInput := dynamodb.PutItemInput{
 				TableName: aws.String(os.Getenv("TOLLTABLE")),
 				Item: map[string]ddbtypes.AttributeValue{
 					"PK":        &ddbtypes.AttributeValueMemberS{Value: normalizedPlate},
-					"SK":        &ddbtypes.AttributeValueMemberS{Value: timestamp.Format(time.RFC3339)},
-					"id":        &ddbtypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", timestamp.Format(time.RFC3339), normalizedPlate)},
+					"SK":        &ddbtypes.AttributeValueMemberS{Value: id.String()},
+					"id":        &ddbtypes.AttributeValueMemberS{Value: id.String()},
 					"timestamp": &ddbtypes.AttributeValueMemberS{Value: timestamp.Format(time.RFC3339)},
 					"plate_num": &ddbtypes.AttributeValueMemberS{Value: normalizedPlate},
 					"toll_id":   &ddbtypes.AttributeValueMemberS{Value: toll_id},

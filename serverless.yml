@@ -58,6 +58,7 @@ functions:
   ProcessEvents:
     handler: bin/process_events
     reservedConcurrency: 1
+    timeout: 60
 
   ProcessPayments:
     handler: bin/process_payments
@@ -134,6 +135,24 @@ resources:
       Properties:
         ShardCount: 1
 
+    TableEventDeliveryStream:
+      Type: AWS::KinesisFirehose::DeliveryStream
+      Properties:
+        DeliveryStreamType: KinesisStreamAsSource
+        KinesisStreamSourceConfiguration:
+          KinesisStreamARN: !GetAtt TableEventStream.Arn
+          RoleARN: !GetAtt TableEventDeliveryRole.Arn
+        ExtendedS3DestinationConfiguration:
+          BucketARN: !GetAtt TableEventBucket.Arn
+          RoleARN: !GetAtt TableEventDeliveryRole.Arn
+          ProcessingConfiguration:
+            Enabled: true
+            Processors:
+              - Type: Lambda
+                Parameters:
+                  - ParameterName: LambdaArn
+                    ParameterValue: !GetAtt ProcessEventsLambdaFunction.Arn
+
     RawImageQueue:
       Type: AWS::SQS::Queue
       Properties:
@@ -175,7 +194,7 @@ resources:
       Properties:
         MessageRetentionPeriod: 1209600
 
-    ApiGatewaySqsRole:
+    TableEventDeliveryRole:
       Type: AWS::IAM::Role
       Properties:
         AssumeRolePolicyDocument:
@@ -184,7 +203,7 @@ resources:
             - Effect: Allow
               Principal:
                 Service:
-                  - apigateway.amazonaws.com
+                  - firehose.amazonaws.com
               Action:
                 - sts:AssumeRole
         Policies:
@@ -194,6 +213,28 @@ resources:
               Statement:
                 - Effect: Allow
                   Action:
-                    - sqs:SendMessage
+                    - kinesis:PutRecord
+                    - kinesis:PutRecords
+                    - kinesis:DescribeStream
+                    - kinesis:DescribeStreamSummary
+                    - kinesis:GetRecords
+                    - kinesis:GetShardIterator
+                    - kinesis:ListShards
+                    - kinesis:ListStreams
+                    - kinesis:SubscribeToShard
                   Resource:
-                    - !GetAtt PaymentQueue.Arn
+                    - !GetAtt TableEventStream.Arn
+                - Effect: Allow
+                  Action:
+                    - s3:GetObject
+                    - s3:PutObject
+                    - s3:DeleteObject
+                    - s3:CopyObject
+                  Resource:
+                    - !Join ["/", [!GetAtt TableEventBucket.Arn, "*"]]
+                - Effect: Allow
+                  Action:
+                    - lambda:InvokeFunction
+                    - lambda:GetFunctionConfiguration
+                  Resource:
+                    - !GetAtt ProcessEventsLambdaFunction.Arn
