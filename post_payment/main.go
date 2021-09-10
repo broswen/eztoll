@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -26,16 +27,28 @@ type Response events.APIGatewayProxyResponse
 func Handler(ctx context.Context, event events.APIGatewayProxyRequest) (Response, error) {
 	var paymentRequest models.PaymentRequest
 	if err := json.Unmarshal([]byte(event.Body), &paymentRequest); err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return Response{
+			StatusCode: http.StatusBadRequest,
+			Body:       "error unmarshalling request",
+		}, nil
 	}
 
 	if err := paymentRequest.Validate(); err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return Response{
+			StatusCode: http.StatusBadRequest,
+			Body:       err.Error(),
+		}, nil
 	}
 
 	j, err := json.Marshal(paymentRequest)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return Response{
+			StatusCode: http.StatusInternalServerError,
+			Body:       "error marshalling response",
+		}, nil
 	}
 
 	sendMessageInput := sqs.SendMessageInput{
@@ -45,7 +58,11 @@ func Handler(ctx context.Context, event events.APIGatewayProxyRequest) (Response
 
 	_, err = sqsClient.SendMessage(ctx, &sendMessageInput)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return Response{
+			StatusCode: http.StatusInternalServerError,
+			Body:       "error submitting request",
+		}, nil
 	}
 
 	return Response{

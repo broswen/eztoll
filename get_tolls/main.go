@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -29,7 +30,7 @@ func Handler(ctx context.Context, event events.APIGatewayProxyRequest) (Response
 
 	if request.PlateNumber == "" {
 		return Response{
-			StatusCode: 400,
+			StatusCode: http.StatusBadRequest,
 			Body:       "invalid plate number",
 		}, nil
 	}
@@ -46,7 +47,11 @@ func Handler(ctx context.Context, event events.APIGatewayProxyRequest) (Response
 
 	queryResponse, err := ddbClient.Query(ctx, &queryInput)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return Response{
+			StatusCode: http.StatusInternalServerError,
+			Body:       "error retrieving tolls",
+		}, nil
 	}
 
 	tolls := make([]models.Toll, 0)
@@ -81,7 +86,11 @@ func Handler(ctx context.Context, event events.APIGatewayProxyRequest) (Response
 
 	j, err := json.Marshal(response)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return Response{
+			StatusCode: http.StatusInternalServerError,
+			Body:       "error marshalling response",
+		}, nil
 	}
 
 	resp := Response{

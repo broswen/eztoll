@@ -47,3 +47,8 @@ Then, the REST API can be queried like `endpoint/tolls/ABC123`, where `ABC123` i
     ]
 }
 ```
+
+### TODO
+- [ ] return useful error messages for APIG endpoints/lambdas
+- [ ] for stream processing, only return single message on failure. log reason for failure
+- [ ] create toll client to modularize dynamodb table interaction

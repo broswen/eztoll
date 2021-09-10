@@ -29,8 +29,10 @@ provider:
     - Effect: "Allow"
       Action:
         - "sqs:SendMessage"
+        - "sqs:SendMessageBatch"
       Resource:
         - !GetAtt PaymentQueue.Arn
+        - !GetAtt PaymentDLQ.Arn
     - Effect: "Allow"
       Action:
         - "s3:GetObject"
@@ -40,6 +42,7 @@ provider:
   environment:
     TOLLTABLE: !Ref TollTable
     PAYMENTQUEUE: !Ref PaymentQueue
+    PAYMENTDLQ: !Ref PaymentDLQ
 
 package:
   patterns:
