@@ -43,6 +43,7 @@ provider:
     TOLLTABLE: !Ref TollTable
     PAYMENTQUEUE: !Ref PaymentQueue
     PAYMENTDLQ: !Ref PaymentDLQ
+    RAWIMAGEDLQ: !Ref RawImageDLQ
 
 package:
   patterns:

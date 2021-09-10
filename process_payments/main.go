@@ -32,6 +32,7 @@ func Handler(ctx context.Context, event events.SQSEvent) error {
 		if err := json.Unmarshal([]byte(record.Body), &paymentRequest); err != nil {
 			log.Printf("unmarshall body: %v\n", err)
 			failedRecords = append(failedRecords, record)
+			continue
 		}
 
 		for _, payment := range paymentRequest.Payments {
@@ -54,6 +55,7 @@ func Handler(ctx context.Context, event events.SQSEvent) error {
 			if err != nil {
 				log.Printf("UpdateItem: %v\n", err)
 				failedRecords = append(failedRecords, record)
+				continue
 			}
 		}
 	}
