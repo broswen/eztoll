@@ -7,7 +7,7 @@ EZToll takes pictures of license plates as input, converts them to toll events, 
 1. Scales with use to handle peak traffic hours
 1. Serverless, pay per use
 1. Durable, store events if processing fails
-1. Store logs for easy auditing
+1. Store DynamoDB table logs for easy auditing
 
 
 ## Service Flow
