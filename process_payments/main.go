@@ -61,9 +61,9 @@ func Handler(ctx context.Context, event events.SQSEvent) error {
 	}
 
 	if len(failedRecords) == len(event.Records) {
-		return fmt.Errorf("%d/%d records failed, failing entire batch", len(failedRecords), len(event.Records))
+		return fmt.Errorf("%d/%d records failed, failing entire batch\n", len(failedRecords), len(event.Records))
 	} else if len(failedRecords) > 0 {
-		fmt.Printf("%d/%d records failed", len(failedRecords), len(event.Records))
+		fmt.Printf("%d/%d records failed\n", len(failedRecords), len(event.Records))
 
 		entries := make([]sqstypes.SendMessageBatchRequestEntry, 0)
 

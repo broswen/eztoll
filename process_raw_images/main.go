@@ -36,14 +36,15 @@ func Handler(ctx context.Context, event events.SQSEvent) error {
 	for _, sqsRecord := range event.Records {
 		err := processSQSMessage(ctx, sqsRecord)
 		if err != nil {
+			fmt.Println(err)
 			failedRecords = append(failedRecords, sqsRecord)
 		}
 	}
 
 	if len(failedRecords) == len(event.Records) {
-		return fmt.Errorf("%d/%d records failed, failing entire batch", len(failedRecords), len(event.Records))
+		return fmt.Errorf("%d/%d records failed, failing entire batch\n", len(failedRecords), len(event.Records))
 	} else if len(failedRecords) > 0 {
-		fmt.Printf("%d/%d records failed", len(failedRecords), len(event.Records))
+		fmt.Printf("%d/%d records failed\n", len(failedRecords), len(event.Records))
 
 		entries := make([]sqstypes.SendMessageBatchRequestEntry, 0)
 
@@ -124,6 +125,11 @@ func processSQSMessage(ctx context.Context, message events.SQSMessage) error {
 		if err != nil {
 			return fmt.Errorf("detect text: %v", err)
 		}
+
+		if len(detectTextResponse.TextDetections) == 0 {
+			return fmt.Errorf("no text detected: %s/%s", bucket, key)
+		}
+
 		var textDetection types.TextDetection
 		for _, text := range detectTextResponse.TextDetections {
 			if text.Type != types.TextTypesLine {
