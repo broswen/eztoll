@@ -59,6 +59,7 @@ func (tc TollClient) GetByPlate(ctx context.Context, plateNumber string) ([]Toll
 			PlateNumber: v["plate_num"].(*ddbtypes.AttributeValueMemberS).Value,
 			TollId:      v["toll_id"].(*ddbtypes.AttributeValueMemberS).Value,
 			Cost:        cost,
+			ImageKey:    v["image_key"].(*ddbtypes.AttributeValueMemberS).Value,
 		}
 		if value, ok := v["payment_id"]; ok {
 			toll.PaymentId = value.(*ddbtypes.AttributeValueMemberS).Value
