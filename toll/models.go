@@ -15,13 +15,13 @@ type GetTollsResponse struct {
 }
 
 type Toll struct {
-	Id          string    `json:"id"`
-	Timestamp   time.Time `json:"timestamp"`
-	PlateNumber string    `json:"plateNumber"`
-	TollId      string    `json:"tollId"`
-	PaymentId   string    `json:"paymentId"`
-	Cost        float64   `json:"cost"`
-	ImageKey    string    `json:"imageKey"`
+	Id          string    `json:"id" dynamodbav:"id"`
+	Timestamp   time.Time `json:"timestamp" dynamodbav:"timestamp"`
+	PlateNumber string    `json:"plateNumber" dynamodbav:"plate_num"`
+	TollId      string    `json:"tollId" dynamodbav:"toll_id"`
+	PaymentId   string    `json:"paymentId" dynamodbav:"payment_id"`
+	Cost        float64   `json:"cost" dynamodbav:"cost"`
+	ImageKey    string    `json:"imageKey" dynamodbav:"image_key"`
 }
 
 type Payment struct {

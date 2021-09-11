@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
-	"time"
 
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	ddbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/rekognition"
@@ -43,26 +42,11 @@ func (tc TollClient) GetByPlate(ctx context.Context, plateNumber string) ([]Toll
 	responseTolls := make([]Toll, 0)
 
 	for _, v := range queryResponse.Items {
-		cost, err := strconv.ParseFloat(v["cost"].(*ddbtypes.AttributeValueMemberN).Value, 64)
+		var toll Toll
+		err = attributevalue.UnmarshalMap(v, &toll)
 		if err != nil {
-			log.Printf("parse cost: %v", err.Error())
+			log.Printf("unmarshal map: %v\n", err)
 			continue
-		}
-		timestamp, err := time.Parse(time.RFC3339, v["timestamp"].(*ddbtypes.AttributeValueMemberS).Value)
-		if err != nil {
-			log.Printf("parse timestamp: %v", err.Error())
-			continue
-		}
-		toll := Toll{
-			Id:          v["id"].(*ddbtypes.AttributeValueMemberS).Value,
-			Timestamp:   timestamp,
-			PlateNumber: v["plate_num"].(*ddbtypes.AttributeValueMemberS).Value,
-			TollId:      v["toll_id"].(*ddbtypes.AttributeValueMemberS).Value,
-			Cost:        cost,
-			ImageKey:    v["image_key"].(*ddbtypes.AttributeValueMemberS).Value,
-		}
-		if value, ok := v["payment_id"]; ok {
-			toll.PaymentId = value.(*ddbtypes.AttributeValueMemberS).Value
 		}
 		responseTolls = append(responseTolls, toll)
 	}
@@ -113,21 +97,17 @@ func (tc TollClient) DetectText(ctx context.Context, rekogClient *rekognition.Cl
 }
 
 func (tc TollClient) SubmitToll(ctx context.Context, toll Toll) error {
-	putItemInput := dynamodb.PutItemInput{
-		TableName: aws.String(os.Getenv("TOLLTABLE")),
-		Item: map[string]ddbtypes.AttributeValue{
-			"PK":        &ddbtypes.AttributeValueMemberS{Value: toll.PlateNumber},
-			"SK":        &ddbtypes.AttributeValueMemberS{Value: toll.Id},
-			"id":        &ddbtypes.AttributeValueMemberS{Value: toll.Id},
-			"timestamp": &ddbtypes.AttributeValueMemberS{Value: toll.Timestamp.Format(time.RFC3339)},
-			"plate_num": &ddbtypes.AttributeValueMemberS{Value: toll.PlateNumber},
-			"toll_id":   &ddbtypes.AttributeValueMemberS{Value: toll.TollId},
-			"cost":      &ddbtypes.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", toll.Cost)},
-			"image_key": &ddbtypes.AttributeValueMemberS{Value: toll.ImageKey},
-		},
+	item, err := attributevalue.MarshalMap(toll)
+	if err != nil {
+		return err
 	}
 
-	_, err := tc.ddbClient.PutItem(ctx, &putItemInput)
+	putItemInput := dynamodb.PutItemInput{
+		TableName: aws.String(os.Getenv("TOLLTABLE")),
+		Item:      item,
+	}
+
+	_, err = tc.ddbClient.PutItem(ctx, &putItemInput)
 	if err != nil {
 		return fmt.Errorf("PutItem: %v", err)
 	}
