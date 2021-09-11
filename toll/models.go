@@ -1,4 +1,4 @@
-package models
+package toll
 
 import (
 	"errors"
@@ -21,6 +21,7 @@ type Toll struct {
 	TollId      string    `json:"tollId"`
 	PaymentId   string    `json:"paymentId"`
 	Cost        float64   `json:"cost"`
+	ImageKey    string    `json:"imageKey"`
 }
 
 type Payment struct {

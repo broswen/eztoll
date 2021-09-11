@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/broswen/eztoll/models"
+	"github.com/broswen/eztoll/toll"
 )
 
 var sqsClient *sqs.Client
@@ -25,7 +25,7 @@ type Response events.APIGatewayProxyResponse
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call
 func Handler(ctx context.Context, event events.APIGatewayProxyRequest) (Response, error) {
-	var paymentRequest models.PaymentRequest
+	var paymentRequest toll.PaymentRequest
 	if err := json.Unmarshal([]byte(event.Body), &paymentRequest); err != nil {
 		log.Println(err)
 		return Response{

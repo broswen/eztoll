@@ -15,19 +15,19 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	ddbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/rekognition"
-	"github.com/aws/aws-sdk-go-v2/service/rekognition/types"
+	rekogtypes "github.com/aws/aws-sdk-go-v2/service/rekognition/types"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/broswen/eztoll/models"
+	"github.com/broswen/eztoll/toll"
 	"github.com/segmentio/ksuid"
 )
 
 var ddbClient *dynamodb.Client
 var sqsClient *sqs.Client
 var rekogClient *rekognition.Client
+var tollClient *toll.TollClient
 
 func Handler(ctx context.Context, event events.SQSEvent) error {
 
@@ -96,51 +96,19 @@ func processSQSMessage(ctx context.Context, message events.SQSMessage) error {
 			return fmt.Errorf("parse timestamp: %v", err)
 		}
 
-		detectTextInput := rekognition.DetectTextInput{
-			Image: &types.Image{
-				S3Object: &types.S3Object{
-					Bucket: aws.String(bucket),
-					Name:   aws.String(key),
-				},
-			},
-			Filters: &types.DetectTextFilters{
-				RegionsOfInterest: []types.RegionOfInterest{
-					{
-						BoundingBox: &types.BoundingBox{
-							Height: aws.Float32(0.6),
-							Width:  aws.Float32(1.0),
-							Left:   aws.Float32(0),
-							Top:    aws.Float32(0.25),
-						},
-					},
-				},
-				WordFilter: &types.DetectionFilter{
-					MinConfidence:       aws.Float32(90),
-					MinBoundingBoxWidth: aws.Float32(0.5),
-				},
+		image := &rekogtypes.Image{
+			S3Object: &rekogtypes.S3Object{
+				Bucket: aws.String(bucket),
+				Name:   aws.String(key),
 			},
 		}
 
-		detectTextResponse, err := rekogClient.DetectText(ctx, &detectTextInput)
+		detectedPlate, err := tollClient.DetectText(ctx, rekogClient, image)
 		if err != nil {
-			return fmt.Errorf("detect text: %v", err)
+			return fmt.Errorf("detect plate: %v", err)
 		}
 
-		if len(detectTextResponse.TextDetections) == 0 {
-			return fmt.Errorf("no text detected: %s/%s", bucket, key)
-		}
-
-		var textDetection types.TextDetection
-		for _, text := range detectTextResponse.TextDetections {
-			if text.Type != types.TextTypesLine {
-				continue
-			}
-			if textDetection.Confidence == nil || *textDetection.Confidence < *text.Confidence {
-				textDetection = text
-			}
-		}
-
-		normalizedPlate := models.NormalizeLicensePlate(*textDetection.DetectedText)
+		normalizedPlate := toll.NormalizeLicensePlate(detectedPlate)
 		// mock static cost, should query toll prices api
 		cost := 2.0
 
@@ -149,24 +117,20 @@ func processSQSMessage(ctx context.Context, message events.SQSMessage) error {
 			return fmt.Errorf("generate ksuid: %v", err)
 		}
 
-		putItemInput := dynamodb.PutItemInput{
-			TableName: aws.String(os.Getenv("TOLLTABLE")),
-			Item: map[string]ddbtypes.AttributeValue{
-				"PK":        &ddbtypes.AttributeValueMemberS{Value: normalizedPlate},
-				"SK":        &ddbtypes.AttributeValueMemberS{Value: id.String()},
-				"id":        &ddbtypes.AttributeValueMemberS{Value: id.String()},
-				"timestamp": &ddbtypes.AttributeValueMemberS{Value: timestamp.Format(time.RFC3339)},
-				"plate_num": &ddbtypes.AttributeValueMemberS{Value: normalizedPlate},
-				"toll_id":   &ddbtypes.AttributeValueMemberS{Value: toll_id},
-				"cost":      &ddbtypes.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", cost)},
-				"image_key": &ddbtypes.AttributeValueMemberS{Value: key},
-			},
+		newToll := toll.Toll{
+			Id:          id.String(),
+			Timestamp:   timestamp,
+			PlateNumber: normalizedPlate,
+			TollId:      toll_id,
+			Cost:        cost,
+			ImageKey:    key,
 		}
 
-		_, err = ddbClient.PutItem(ctx, &putItemInput)
+		err = tollClient.SubmitToll(ctx, newToll)
 		if err != nil {
-			return fmt.Errorf("PutItem: %v", err)
+			return fmt.Errorf("submit toll: %v", err)
 		}
+
 	}
 	return nil
 }
@@ -180,6 +144,7 @@ func init() {
 	rekogClient = rekognition.NewFromConfig(cfg)
 	ddbClient = dynamodb.NewFromConfig(cfg)
 	sqsClient = sqs.NewFromConfig(cfg)
+	tollClient = toll.NewClientFromDynamoDB(ddbClient)
 }
 
 func main() {

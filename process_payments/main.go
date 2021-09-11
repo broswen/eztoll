@@ -11,15 +11,15 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/broswen/eztoll/models"
+	"github.com/broswen/eztoll/toll"
 )
 
 var ddbClient *dynamodb.Client
 var sqsClient *sqs.Client
+var tollClient *toll.TollClient
 
 func Handler(ctx context.Context, event events.SQSEvent) error {
 
@@ -27,7 +27,7 @@ func Handler(ctx context.Context, event events.SQSEvent) error {
 	for _, record := range event.Records {
 		log.Printf("MessageId: %s\n", record.MessageId)
 
-		var paymentRequest models.PaymentRequest
+		var paymentRequest toll.PaymentRequest
 
 		if err := json.Unmarshal([]byte(record.Body), &paymentRequest); err != nil {
 			log.Printf("unmarshall body: %v\n", err)
@@ -36,22 +36,9 @@ func Handler(ctx context.Context, event events.SQSEvent) error {
 		}
 
 		for _, payment := range paymentRequest.Payments {
-			updateItemInput := dynamodb.UpdateItemInput{
-				TableName: aws.String(os.Getenv("TOLLTABLE")),
-				Key: map[string]types.AttributeValue{
-					"PK": &types.AttributeValueMemberS{Value: payment.PlateNumber},
-					"SK": &types.AttributeValueMemberS{Value: payment.Id},
-				},
-				UpdateExpression: aws.String("SET #p = :p"),
-				ExpressionAttributeNames: map[string]string{
-					"#p": "payment_id",
-				},
-				ExpressionAttributeValues: map[string]types.AttributeValue{
-					":p": &types.AttributeValueMemberS{Value: payment.PaymentId},
-				},
-				ConditionExpression: aws.String("attribute_exists(PK) AND attribute_exists(SK) AND attribute_not_exists(payment_id)"),
-			}
-			_, err := ddbClient.UpdateItem(ctx, &updateItemInput)
+
+			err := tollClient.SubmitPayment(ctx, payment)
+
 			if err != nil {
 				log.Printf("UpdateItem: %v\n", err)
 				failedRecords = append(failedRecords, record)
@@ -101,6 +88,7 @@ func init() {
 
 	ddbClient = dynamodb.NewFromConfig(cfg)
 	sqsClient = sqs.NewFromConfig(cfg)
+	tollClient = toll.NewClientFromDynamoDB(ddbClient)
 }
 
 func main() {
